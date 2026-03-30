@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Your Detail | Precision Detailing</title>
+  <meta name="description" content="Book your mobile detailing appointment online. Choose your service, pick a date, and confirm — powered by Square.">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { padding-top: 80px; }
+
+    /* Step indicator */
+    .step-indicator { display: flex; justify-content: center; gap: 0; margin-bottom: 48px; flex-wrap: wrap; }
+    .step-item { display: flex; align-items: center; gap: 8px; padding: 12px 20px; position: relative; }
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700; border: 2px solid #333; color: #666; transition: all .3s; flex-shrink: 0;
+    }
+    .step-item.active .step-num { background: #C0392B; border-color: #C0392B; color: #fff; }
+    .step-item.completed .step-num { background: #27ae60; border-color: #27ae60; color: #fff; }
+    .step-label { font-size: .8rem; text-transform: uppercase; letter-spacing: 1px; color: #666; transition: color .3s; }
+    .step-item.active .step-label { color: #fff; }
+    .step-item.completed .step-label { color: #27ae60; }
+    .step-arrow { color: #333; margin: 0 4px; font-size: .8rem; }
+
+    /* Step panels */
+    .step-panel { display: none; }
+    .step-panel.active { display: block; }
+
+    /* Service selector cards */
+    .service-selector { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; max-width: 900px; margin: 0 auto; }
+    .svc-card {
+      background: #141414; border: 2px solid #222; border-radius: 4px; padding: 28px 20px;
+      text-align: center; cursor: pointer; transition: all .3s; position: relative;
+    }
+    .svc-card:hover { border-color: #555; }
+    .svc-card.selected { border-color: #C0392B; background: rgba(192,57,43,.05); }
+    .svc-card .radio {
+      width: 20px; height: 20px; border: 2px solid #444; border-radius: 50%; margin: 0 auto 14px;
+      display: flex; align-items: center; justify-content: center; transition: all .3s;
+    }
+    .svc-card.selected .radio { border-color: #C0392B; }
+    .svc-card.selected .radio::after { content: ''; width: 10px; height: 10px; background: #C0392B; border-radius: 50%; }
+    .svc-card h4 { color: #fff; font-size: .95rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .svc-card .svc-price { color: #C0392B; font-size: 1.5rem; font-weight: 800; }
+    .svc-card .svc-desc { color: #888; font-size: .8rem; margin-top: 8px; }
+
+    /* Calendar */
+    .calendar-wrap { max-width: 700px; margin: 0 auto; }
+    .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .cal-header h3 { color: #fff; font-size: 1.2rem; }
+    .cal-nav { background: #222; border: none; color: #ccc; padding: 8px 16px; cursor: pointer; border-radius: 2px; font-size: .9rem; }
+    .cal-nav:hover { background: #333; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 32px; }
+    .cal-day-label { text-align: center; color: #666; font-size: .75rem; text-transform: uppercase; letter-spacing: 1px; padding: 8px 0; }
+    .cal-day {
+      aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #141414; border: 1px solid #222; border-radius: 4px; cursor: pointer; transition: all .2s; position: relative;
+    }
+    .cal-day span { color: #fff; font-size: .9rem; }
+    .cal-day.available::after { content: ''; width: 6px; height: 6px; background: #27ae60; border-radius: 50%; margin-top: 4px; }
+    .cal-day.booked { opacity: .35; cursor: not-allowed; }
+    .cal-day.booked span { color: #666; }
+    .cal-day.empty { background: transparent; border: none; cursor: default; }
+    .cal-day.available:hover { border-color: #C0392B; }
+    .cal-day.selected { border-color: #C0392B; background: rgba(192,57,43,.1); }
+    .cal-day.today { border-color: rgba(192,57,43,.4); }
+
+    /* Time slots */
+    .time-slots { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    .time-slot {
+      padding: 12px 24px; background: #141414; border: 1px solid #222; border-radius: 4px;
+      color: #fff; font-size: .9rem; cursor: pointer; transition: all .2s;
+    }
+    .time-slot:hover:not(.slot-booked) { border-color: #C0392B; }
+    .time-slot.selected { border-color: #C0392B; background: rgba(192,57,43,.1); }
+    .time-slot.slot-booked { opacity: .35; cursor: not-allowed; color: #666; }
+    .time-slot .booked-text { display: block; font-size: .65rem; color: #C0392B; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* Form */
+    .booking-form { max-width: 650px; margin: 0 auto; }
+
+    /* Summary */
+    .summary-card {
+      max-width: 500px; margin: 0 auto; background: #141414; border: 1px solid #222; border-radius: 4px; padding: 36px;
+    }
+    .summary-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #1a1a1a; }
+    .summary-row:last-child { border: none; }
+    .summary-label { color: #888; font-size: .9rem; }
+    .summary-value { color: #fff; font-size: .9rem; font-weight: 600; }
+    .summary-total { display: flex; justify-content: space-between; padding: 16px 0; margin-top: 8px; border-top: 2px solid #C0392B; }
+    .summary-total .summary-label { color: #fff; font-size: 1rem; font-weight: 700; text-transform: uppercase; }
+    .summary-total .summary-value { color: #C0392B; font-size: 1.3rem; font-weight: 800; }
+
+    /* Navigation buttons */
+    .step-nav { display: flex; justify-content: space-between; margin-top: 40px; max-width: 700px; margin-left: auto; margin-right: auto; }
+    .step-nav .btn { min-width: 140px; text-align: center; }
+
+    /* Square branding */
+    .square-note { text-align: center; color: #666; font-size: .85rem; margin-top: 24px; padding: 16px; background: #0f0f0f; border-radius: 4px; }
+    .square-note svg { width: 16px; height: 16px; vertical-align: middle; margin-right: 4px; }
+    .powered-by { text-align: center; color: #444; font-size: .75rem; padding: 24px 0 12px; }
+
+    /* Confirmation overlay */
+    .confirm-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8); z-index: 2000;
+      align-items: center; justify-content: center;
+    }
+    .confirm-overlay.show { display: flex; }
+    .confirm-box {
+      background: #141414; border: 1px solid #C0392B; border-radius: 8px; padding: 48px; text-align: center; max-width: 450px;
+    }
+    .confirm-box .check { font-size: 3rem; margin-bottom: 16px; }
+    .confirm-box h3 { color: #fff; font-size: 1.4rem; margin-bottom: 8px; }
+    .confirm-box p { color: #aaa; font-size: .95rem; margin-bottom: 24px; }
+
+    @media(max-width:768px){
+      .service-selector { grid-template-columns: 1fr; }
+      .step-indicator { gap: 4px; }
+      .step-item { padding: 8px 10px; }
+      .step-label { font-size: .65rem; }
+      .step-arrow { display: none; }
+      .time-slots { flex-direction: column; align-items: center; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <nav>
+    <a href="index.html" class="logo">PRECISION <span>DETAILING</span></a>
+    <button class="nav-toggle" aria-label="Toggle menu" onclick="document.querySelector('.nav-links').classList.toggle('active')">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="services.html">Services</a>
+      <a href="about.html">About</a>
+      <a href="square-booking.html" class="btn btn-primary active" style="padding:10px 24px;font-size:.85rem">Book Now</a>
+    </div>
+  </nav>
+</header>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <h1>Book Your <span class="gold">Detail</span></h1>
+  <p>Select your service, choose a time, and confirm your appointment.</p>
+</div>
+
+<section class="section">
+  <div class="container">
+
+    <!-- STEP INDICATOR -->
+    <div class="step-indicator">
+      <div class="step-item active" data-step="1">
+        <div class="step-num">1</div>
+        <span class="step-label">Choose Service</span>
+      </div>
+      <span class="step-arrow">→</span>
+      <div class="step-item" data-step="2">
+        <div class="step-num">2</div>
+        <span class="step-label">Pick Date & Time</span>
+      </div>
+      <span class="step-arrow">→</span>
+      <div class="step-item" data-step="3">
+        <div class="step-num">3</div>
+        <span class="step-label">Your Info</span>
+      </div>
+      <span class="step-arrow">→</span>
+      <div class="step-item" data-step="4">
+        <div class="step-num">4</div>
+        <span class="step-label">Confirm</span>
+      </div>
+    </div>
+
+    <!-- STEP 1: Choose Service -->
+    <div class="step-panel active" id="step1">
+      <h2 class="section-title" style="font-size:1.5rem; margin-bottom:32px;">Select a <span class="gold">Service</span></h2>
+      <div class="service-selector">
+        <div class="svc-card" data-service="Basic Exterior" data-price="149" onclick="selectService(this)">
+          <div class="radio"></div>
+          <h4>Basic Exterior</h4>
+          <div class="svc-price">$149</div>
+          <div class="svc-desc">Wash, clay bar, tire shine, window clean</div>
+        </div>
+        <div class="svc-card" data-service="Full Detail" data-price="299" onclick="selectService(this)">
+          <div class="radio"></div>
+          <h4>Full Detail</h4>
+          <div class="svc-price">$299</div>
+          <div class="svc-desc">Full interior + exterior detail package</div>
+        </div>
+        <div class="svc-card" data-service="Premium Package" data-price="449" onclick="selectService(this)">
+          <div class="radio"></div>
+          <h4>Premium Package</h4>
+          <div class="svc-price">$449</div>
+          <div class="svc-desc">Complete detail + ceramic sealant + engine bay</div>
+        </div>
+        <div class="svc-card" data-service="Paint Correction" data-price="399" onclick="selectService(this)">
+          <div class="radio"></div>
+          <h4>Paint Correction</h4>
+          <div class="svc-price">$399</div>
+          <div class="svc-desc">Multi-stage correction for swirls & scratches</div>
+        </div>
+        <div class="svc-card" data-service="Ceramic Coating" data-price="799" onclick="selectService(this)">
+          <div class="radio"></div>
+          <h4>Ceramic Coating</h4>
+          <div class="svc-price">$799</div>
+          <div class="svc-desc">Professional ceramic protection, 2+ year durability</div>
+        </div>
+      </div>
+      <div class="step-nav">
+        <div></div>
+        <button class="btn btn-primary" onclick="goToStep(2)">Next: Pick Date →</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Calendar -->
+    <div class="step-panel" id="step2">
+      <div class="calendar-wrap">
+        <div class="cal-header">
+          <button class="cal-nav" onclick="changeMonth(-1)">← Prev</button>
+          <h3 id="calMonthLabel">March 2026</h3>
+          <button class="cal-nav" onclick="changeMonth(1)">Next →</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+
+        <h3 style="color:#fff; text-align:center; margin-bottom:16px; font-size:1rem; text-transform:uppercase; letter-spacing:1px;">Available Times</h3>
+        <div class="time-slots" id="timeSlots"></div>
+      </div>
+      <div class="step-nav">
+        <button class="btn btn-outline" onclick="goToStep(1)">← Back</button>
+        <button class="btn btn-primary" onclick="goToStep(3)">Next: Your Info →</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Your Info -->
+    <div class="step-panel" id="step3">
+      <div class="booking-form">
+        <h2 class="section-title" style="font-size:1.5rem; margin-bottom:32px;">Your <span class="gold">Information</span></h2>
+        <div class="contact-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>First Name</label>
+              <input type="text" id="fname" placeholder="John">
+            </div>
+            <div class="form-group">
+              <label>Last Name</label>
+              <input type="text" id="lname" placeholder="Smith">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Phone</label>
+              <input type="tel" id="phone" placeholder="(206) 555-0123">
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="email" placeholder="john@example.com">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Vehicle Year</label>
+              <input type="text" id="vyear" placeholder="2024">
+            </div>
+            <div class="form-group">
+              <label>Make / Model</label>
+              <input type="text" id="vmake" placeholder="Tesla Model 3">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Address <span style="color:#666; text-transform:none; letter-spacing:0;">(We come to you!)</span></label>
+            <input type="text" id="address" placeholder="123 Main St, Seattle, WA 98101">
+          </div>
+          <div class="form-group">
+            <label>Special Requests</label>
+            <textarea id="requests" placeholder="Any specific areas of concern, pet hair, stains, etc."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="step-nav" style="max-width:650px;">
+        <button class="btn btn-outline" onclick="goToStep(2)">← Back</button>
+        <button class="btn btn-primary" onclick="goToStep(4)">Review Booking →</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Summary -->
+    <div class="step-panel" id="step4">
+      <h2 class="section-title" style="font-size:1.5rem; margin-bottom:32px;">Confirm Your <span class="gold">Booking</span></h2>
+      <div class="summary-card">
+        <div class="summary-row">
+          <span class="summary-label">Service</span>
+          <span class="summary-value" id="sumService">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Date</span>
+          <span class="summary-value" id="sumDate">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Time</span>
+          <span class="summary-value" id="sumTime">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Name</span>
+          <span class="summary-value" id="sumName">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Vehicle</span>
+          <span class="summary-value" id="sumVehicle">—</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Address</span>
+          <span class="summary-value" id="sumAddress">—</span>
+        </div>
+        <div class="summary-total">
+          <span class="summary-label">Total</span>
+          <span class="summary-value" id="sumPrice">—</span>
+        </div>
+        <div style="text-align:center; margin-top:24px;">
+          <button class="btn btn-primary" style="width:100%; padding:16px; font-size:1.05rem;" onclick="confirmBooking()">Confirm Booking</button>
+        </div>
+        <div class="square-note">
+          <p>💳 Payment collected on day of service. We accept all major cards via Square.</p>
+        </div>
+      </div>
+      <div class="step-nav" style="max-width:500px;">
+        <button class="btn btn-outline" onclick="goToStep(3)">← Back</button>
+        <div></div>
+      </div>
+      <div class="powered-by">Powered by Square</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Confirmation overlay -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="check">✅</div>
+    <h3>Booking Confirmed!</h3>
+    <p>We'll send a confirmation to your email shortly. See you soon!</p>
+    <a href="index.html" class="btn btn-primary">Back to Home</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo">PRECISION <span>DETAILING</span></div>
+        <p>Seattle's premier mobile detailing service.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <p><a href="tel:+12063760807">(206) 376-0807</a></p>
+        <p>Seattle, WA Area</p>
+      </div>
+      <div class="footer-col">
+        <h4>Hours</h4>
+        <p>Monday – Friday: 7AM – 7PM</p>
+        <p>Saturday: 7AM – 5PM</p>
+        <p>Sunday: Closed</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      &copy; 2026 Precision Detailing. All rights reserved. | Seattle, WA
+    </div>
+  </div>
+</footer>
+
+<script>
+// State
+let selectedService = null;
+let selectedPrice = 0;
+let selectedDate = null;
+let selectedTime = null;
+let currentMonth = 2; // March (0-indexed)
+let currentYear = 2026;
+
+// Seeded "random" for consistent availability
+function seededAvail(day, month) {
+  return ((day * 7 + month * 13) % 10) < 6; // ~60% available
+}
+
+function selectService(el) {
+  document.querySelectorAll('.svc-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedService = el.dataset.service;
+  selectedPrice = el.dataset.price;
+}
+
+function goToStep(step) {
+  // Validate
+  if (step === 2 && !selectedService) { alert('Please select a service first.'); return; }
+  if (step === 3 && (!selectedDate || !selectedTime)) { alert('Please pick a date and time.'); return; }
+  if (step === 4) {
+    const fname = document.getElementById('fname').value;
+    const lname = document.getElementById('lname').value;
+    if (!fname || !lname) { alert('Please enter at least your first and last name.'); return; }
+    // Populate summary
+    document.getElementById('sumService').textContent = selectedService;
+    document.getElementById('sumDate').textContent = selectedDate;
+    document.getElementById('sumTime').textContent = selectedTime;
+    document.getElementById('sumName').textContent = fname + ' ' + lname;
+    document.getElementById('sumVehicle').textContent = (document.getElementById('vyear').value + ' ' + document.getElementById('vmake').value).trim() || '—';
+    document.getElementById('sumAddress').textContent = document.getElementById('address').value || '—';
+    document.getElementById('sumPrice').textContent = '$' + selectedPrice;
+  }
+
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('step' + step).classList.add('active');
+
+  document.querySelectorAll('.step-item').forEach(s => {
+    const sNum = parseInt(s.dataset.step);
+    s.classList.remove('active', 'completed');
+    if (sNum === step) s.classList.add('active');
+    else if (sNum < step) s.classList.add('completed');
+  });
+
+  if (step === 2) renderCalendar();
+  window.scrollTo({ top: 300, behavior: 'smooth' });
+}
+
+function renderCalendar() {
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('calMonthLabel').textContent = months[currentMonth] + ' ' + currentYear;
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  // Day labels
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'cal-day-label';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const today = new Date();
+
+  // Empty cells
+  for (let i = 0; i < firstDay; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const el = document.createElement('div');
+    const dateObj = new Date(currentYear, currentMonth, d);
+    const isPast = dateObj < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const isSunday = dateObj.getDay() === 0;
+    const avail = !isPast && !isSunday && seededAvail(d, currentMonth);
+
+    el.className = 'cal-day' + (avail ? ' available' : ' booked');
+    if (isPast || isSunday) el.className = 'cal-day booked';
+
+    const isToday = dateObj.toDateString() === today.toDateString();
+    if (isToday) el.classList.add('today');
+
+    const span = document.createElement('span');
+    span.textContent = d;
+    el.appendChild(span);
+
+    if (avail) {
+      el.onclick = function() {
+        document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        selectedDate = monthNames[currentMonth] + ' ' + d + ', ' + currentYear;
+        renderTimeSlots(d);
+      };
+    }
+
+    // Check if this date was previously selected
+    if (selectedDate) {
+      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const checkStr = monthNames[currentMonth] + ' ' + d + ', ' + currentYear;
+      if (checkStr === selectedDate && avail) el.classList.add('selected');
+    }
+
+    grid.appendChild(el);
+  }
+
+  renderTimeSlots(null);
+}
+
+function renderTimeSlots(day) {
+  const container = document.getElementById('timeSlots');
+  container.innerHTML = '';
+  const times = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
+
+  times.forEach((t, i) => {
+    const el = document.createElement('div');
+    const booked = day ? ((day + i) % 3 === 0) : false;
+    el.className = 'time-slot' + (booked ? ' slot-booked' : '');
+
+    if (booked) {
+      el.innerHTML = t + '<span class="booked-text">Booked</span>';
+    } else {
+      el.textContent = t;
+      el.onclick = function() {
+        document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedTime = t;
+      };
+    }
+
+    // Re-select if previously chosen
+    if (t === selectedTime && !booked) el.classList.add('selected');
+
+    container.appendChild(el);
+  });
+}
+
+function changeMonth(dir) {
+  currentMonth += dir;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  renderCalendar();
+}
+
+function confirmBooking() {
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+
+// Initial time slots
+renderTimeSlots(null);
+</script>
+
+</body>
+</html>
